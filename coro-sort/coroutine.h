@@ -15,4 +15,4 @@ enum stack_type { STACK_MMAP, STACK_SIG, STACK_MPROT };
 
 void *allocate_stack(enum stack_type t);
 
-#endif // TARANTOOL_SYSPROG_CORO_SORT_COROUTINE_H_
+#endif  // TARANTOOL_SYSPROG_CORO_SORT_COROUTINE_H_

@@ -5,4 +5,4 @@
 
 void sort(int32_t* arr, uint32_t size);
 
-#endif //TARANTOOL_SYSPROG_CORO_SORT_SORT_H_
+#endif  // TARANTOOL_SYSPROG_CORO_SORT_SORT_H_

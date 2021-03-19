@@ -32,11 +32,11 @@ static void *allocate_stack_mprot() {
  */
 void *allocate_stack(enum stack_type t) {
   switch (t) {
-  case STACK_MMAP:
-    return allocate_stack_mmap();
-  case STACK_SIG:
-    return allocate_stack_sig();
-  case STACK_MPROT:
-    return allocate_stack_mprot();
+    case STACK_MMAP:
+      return allocate_stack_mmap();
+    case STACK_SIG:
+      return allocate_stack_sig();
+    case STACK_MPROT:
+      return allocate_stack_mprot();
   }
 }
