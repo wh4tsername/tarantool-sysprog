@@ -1,42 +1,43 @@
 #include "coroutine.h"
 
-/**
- * Below you can see 3 different ways of how to allocate stack.
- * You can choose any. All of them do in fact the same.
- */
+#include <string.h>
 
-static void *allocate_stack_sig() {
-  void *stack = malloc(stack_size);
-  stack_t ss;
-  ss.ss_sp = stack;
-  ss.ss_size = stack_size;
-  ss.ss_flags = 0;
-  sigaltstack(&ss, NULL);
-  return stack;
+void finish_coroutine(struct scheduler* coro_scheduler) {
+  coro_scheduler->statuses[coro_scheduler->running_coroutine] = FINISHED;
 }
 
-static void *allocate_stack_mmap() {
-  return mmap(NULL, stack_size, PROT_READ | PROT_WRITE | PROT_EXEC,
-              MAP_ANON | MAP_PRIVATE, -1, 0);
-}
+struct ucontext_t* spawn_coroutine(struct scheduler* coro_scheduler) {
+  conditional_handle_error(
+      coro_scheduler->free_slot == coro_scheduler->max_coroutines,
+      "scheduler has no space to spawn coroutine");
 
-static void *allocate_stack_mprot() {
-  void *stack = malloc(stack_size);
-  mprotect(stack, stack_size, PROT_READ | PROT_WRITE | PROT_EXEC);
-  return stack;
-}
+  // making coroutine finish context
+  char* finish_stack = allocate_stack(STACK_SIG);
 
-/**
- * Use this wrapper to choose your favourite way of stack
- * allocation.
- */
-void *allocate_stack(enum stack_type t) {
-  switch (t) {
-    case STACK_MMAP:
-      return allocate_stack_mmap();
-    case STACK_SIG:
-      return allocate_stack_sig();
-    case STACK_MPROT:
-      return allocate_stack_mprot();
-  }
+  struct ucontext_t* finish_ctx = malloc(sizeof(struct ucontext_t));
+  getcontext(finish_ctx);
+
+  finish_ctx->uc_stack.ss_sp = finish_stack;
+  finish_ctx->uc_stack.ss_size = stack_size;
+  finish_ctx->uc_link = coro_scheduler->scheduler_ctx;
+  makecontext(finish_ctx, (void (*)(void))finish_coroutine, 1, coro_scheduler);
+
+  // making coroutine context
+  char* job_stack = allocate_stack(STACK_SIG);
+
+  coro_scheduler->statuses[coro_scheduler->free_slot] = SUSPENDED;
+
+  struct ucontext_t* ctx =
+      &coro_scheduler->coroutines[coro_scheduler->free_slot];
+  memset(ctx, 0, sizeof(struct ucontext_t));
+  conditional_handle_error(getcontext(ctx) == -1,
+                           "error while getting context");
+
+  ctx->uc_stack.ss_sp = job_stack;
+  ctx->uc_stack.ss_size = stack_size;
+  ctx->uc_link = finish_ctx;
+
+  ++coro_scheduler->free_slot;
+
+  return ctx;
 }

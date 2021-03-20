@@ -1,71 +1,61 @@
+#include <fcntl.h>
 #include <unistd.h>
 
 #include "aio_read_util.h"
 #include "coroutine.h"
+#include "merge_sorted_arrays.h"
+#include "scheduler.h"
 
-static ucontext_t uctx_main, uctx_func1, uctx_func2;
+int main(int argc, char** argv) {
+  ucontext_t main_ctx;
 
-static void my_coroutine(int id) {
-  printf("func%d: started\n", id);
-  if (id == 1) {
-    printf("coroutine1: swapcontext(&uctx_func1, &uctx_func2)\n");
-    if (swapcontext(&uctx_func1, &uctx_func2) == -1)
-      handle_error("swapcontext");
-  } else {
-    printf("coroutine2: swapcontext(&uctx_func2, &uctx_func1)\n");
-    if (swapcontext(&uctx_func2, &uctx_func1) == -1)
-      handle_error("swapcontext");
+  uint32_t num_files = argc - 1;
+
+  char** buffers = calloc(num_files, sizeof(char*));
+  int32_t** arrays = calloc(num_files, sizeof(int32_t*));
+  int32_t* sizes = calloc(num_files, sizeof(int32_t));
+
+  make_scheduler(&global_coro_scheduler, &main_ctx, num_files + 1);
+
+  struct ucontext_t* ctx = spawn_coroutine(&global_coro_scheduler);
+  makecontext(ctx, (void (*)(void))aio_read_util, 5, num_files, argv + 1,
+              buffers, arrays, sizes);
+
+  conditional_handle_error(
+      swapcontext(&main_ctx, global_coro_scheduler.scheduler_ctx),
+      "error while yielding");
+
+  destroy_scheduler(&global_coro_scheduler);
+
+  uint32_t total_size = 0;
+  for (uint32_t i = 0; i < num_files; ++i) {
+    total_size += sizes[i];
   }
-  printf("func%d: returning\n", id);
-}
 
-int coro_test(int argc, char **argv) {
-  /* First of all, create a stack for each coroutine. */
-  char *func1_stack = allocate_stack(STACK_SIG);
-  char *func2_stack = allocate_stack(STACK_MPROT);
+  int32_t* sort_res = calloc(total_size, sizeof(int32_t));
 
-  /*
-   * Below is just initialization of coroutine structures.
-   * They are not started yet. Just created.
-   */
-  if (getcontext(&uctx_func1) == -1) handle_error("getcontext");
-  /*
-   * Here you specify a stack, allocated earlier. Unique for
-   * each coroutine.
-   */
-  uctx_func1.uc_stack.ss_sp = func1_stack;
-  uctx_func1.uc_stack.ss_size = stack_size;
-  /*
-   * Important - here you specify, to which context to
-   * switch after this coroutine is finished. The code below
-   * says, that when 'uctx_func1' is finished, it should
-   * switch to 'uctx_main'.
-   */
-  uctx_func1.uc_link = &uctx_main;
-  makecontext(&uctx_func1, (void (*)(void))my_coroutine, 1, 1);
+  merge_sorted_arrays(arrays, num_files, sizes, sort_res, total_size);
 
-  if (getcontext(&uctx_func2) == -1) handle_error("getcontext");
-  uctx_func2.uc_stack.ss_sp = func2_stack;
-  uctx_func2.uc_stack.ss_size = stack_size;
-  /* Successor context is f1(), unless argc > 1. */
-  uctx_func2.uc_link = (argc > 1) ? NULL : &uctx_func1;
-  makecontext(&uctx_func2, (void (*)(void))my_coroutine, 1, 2);
+  int fd =
+      open("../../output.txt", O_CREAT | O_TRUNC | O_RDWR, S_IRUSR | S_IWUSR);
 
-  /*
-   * And here it starts. The first coroutine to start is
-   * 'uctx_func2'.
-   */
-  printf("main: swapcontext(&uctx_main, &uctx_func2)\n");
-  if (swapcontext(&uctx_main, &uctx_func2) == -1) handle_error("swapcontext");
+  for (uint32_t i = 0; i < total_size; ++i) {
+    dprintf(fd, "%d ", sort_res[i]);
+  }
+  close(fd);
 
-  printf("main: exiting\n");
-  return 0;
-}
+  free(sort_res);
 
-////////////////////////////////////////////////////////////////////////////////
+  for (uint32_t i = 0; i < num_files; ++i) {
+    free(buffers[i]);
+  }
+  free(buffers);
+  free(sizes);
 
-int main(int argc, char **argv) {
-  aio_read_util(argc - 1, argv + 1);
+  for (uint32_t i = 0; i < num_files; ++i) {
+    free(arrays[i]);
+  }
+  free(arrays);
 
   return 0;
 }

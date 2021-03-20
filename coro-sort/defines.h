@@ -2,6 +2,7 @@
 #define TARANTOOL_SYSPROG_CORO_SORT_DEFINES_H_
 
 #include <stdio.h>
+#include <stdlib.h>
 
 #define conditional_handle_error(stmt, msg) \
   if (stmt) {                               \
