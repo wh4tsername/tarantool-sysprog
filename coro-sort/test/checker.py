@@ -18,10 +18,12 @@ for i in range(0, len(data)):
     try:
         v = int(data[i])
         if v < prev_number:
+            print('Sequence is decreasing')
             print('Error on numbers {} {}'.format(prev_number, v))
             exit(1)
         prev_number = v
     except:
         pass
 
-print('All is ok')
+print('Sequence length: ' + str(len(data)))
+print('Sequence is not decreasing')
