@@ -37,6 +37,7 @@ void merge(int32_t* arr, int32_t* buf, uint32_t left, uint32_t mid,
 }
 
 void sort(int32_t* array, uint32_t size) {
+  // yielding because already spent time on preparing sort
   yield(&global_coro_scheduler);
 
   int32_t* buf = calloc(size, sizeof(int32_t));
@@ -45,6 +46,7 @@ void sort(int32_t* array, uint32_t size) {
     for (uint32_t j = 0; j < size - i; j += 2 * i) {
       merge(array, buf, j, j + i, min(j + 2 * i, size));
 
+      // yielding because spent time merging arrays
       yield(&global_coro_scheduler);
     }
   }

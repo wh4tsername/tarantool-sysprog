@@ -63,17 +63,19 @@ void aio_read_util(uint32_t num_files, char **filenames, char **buffers,
           perror("aio_error");
         }
 
-        // process
         char *line = (char *)req_list[i].aiocb_p->aio_buf;
         uint32_t line_length = req_list[i].aiocb_p->aio_nbytes;
         line[line_length - 1] = '\0';
 
+        // spawning coroutine to sort file
         struct ucontext_t *ctx = spawn_coroutine(&global_coro_scheduler);
         makecontext(ctx, (void (*)(void))prepare_sort, 4, line, line_length,
                     &arrays[i], &sizes[i]);
       }
     }
 
+    // yielding to let other coroutines work
+    // instead of waiting for async reading to finish
     yield(&global_coro_scheduler);
   }
 

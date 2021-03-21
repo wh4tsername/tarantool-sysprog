@@ -1,9 +1,15 @@
 #include "coroutine.h"
 
 #include <string.h>
+#include <time.h>
 
 void finish_coroutine(struct scheduler* coro_scheduler) {
   coro_scheduler->statuses[coro_scheduler->running_coroutine] = FINISHED;
+
+  // coroutine total time count
+  coro_scheduler->total_time[coro_scheduler->running_coroutine] +=
+    clock() -
+      coro_scheduler->cur_launch_time[coro_scheduler->running_coroutine];
 }
 
 struct ucontext_t* spawn_coroutine(struct scheduler* coro_scheduler) {

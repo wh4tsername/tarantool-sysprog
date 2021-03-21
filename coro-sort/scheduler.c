@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
+#include <time.h>
 #include <ucontext.h>
 
 static void *allocate_stack_sig() {
@@ -58,7 +59,7 @@ void schedule(struct scheduler *coro_scheduler) {
                              "number of running coroutines is more than one");
 
     if (num_running == 0 && num_suspended == 0) {
-      printf("scheduling finished\n");
+      printf("Scheduling finished!\n");
       break;
     }
 
@@ -78,13 +79,34 @@ void schedule(struct scheduler *coro_scheduler) {
     coro_scheduler->statuses[new_index] = RUNNING;
     coro_scheduler->running_coroutine = new_index;
 
-    //    printf("Launched: %zu\n", coro_scheduler->running_coroutine);
+    // coroutine start time
+    coro_scheduler->cur_launch_time[new_index] = clock();
 
     conditional_handle_error(
         swapcontext(coro_scheduler->scheduler_ctx,
                     &coro_scheduler->coroutines[new_index]),
         "error while switching to coroutine");
   }
+}
+
+void reuse_scheduler(struct scheduler *coro_scheduler,
+                     struct ucontext_t *main_ctx) {
+  free(coro_scheduler->scheduler_ctx->uc_stack.ss_sp);
+  free(coro_scheduler->scheduler_ctx);
+
+  char *scheduler_stack = allocate_stack(STACK_SIG);
+
+  coro_scheduler->scheduler_ctx = malloc(sizeof(struct ucontext_t));
+  conditional_handle_error(getcontext(coro_scheduler->scheduler_ctx) == -1,
+                           "error while getting context");
+
+  coro_scheduler->scheduler_ctx->uc_stack.ss_sp = scheduler_stack;
+  coro_scheduler->scheduler_ctx->uc_stack.ss_size = stack_size;
+  coro_scheduler->scheduler_ctx->uc_link = main_ctx;
+
+  makecontext(coro_scheduler->scheduler_ctx, (void (*)(void))schedule, 1,
+              coro_scheduler);
+
 }
 
 void make_scheduler(struct scheduler *coro_scheduler,
@@ -110,6 +132,9 @@ void make_scheduler(struct scheduler *coro_scheduler,
   coro_scheduler->coroutines =
       malloc(max_coroutines * sizeof(struct ucontext_t));
   coro_scheduler->statuses = malloc(max_coroutines * sizeof(enum coro_status));
+
+  coro_scheduler->cur_launch_time = calloc(max_coroutines, sizeof(clock_t));
+  coro_scheduler->total_time = calloc(max_coroutines, sizeof(clock_t));
 }
 
 void destroy_scheduler(struct scheduler *coro_scheduler) {
@@ -124,12 +149,35 @@ void destroy_scheduler(struct scheduler *coro_scheduler) {
 
   free(coro_scheduler->scheduler_ctx->uc_stack.ss_sp);
   free(coro_scheduler->scheduler_ctx);
+
+  free(coro_scheduler->cur_launch_time);
+  free(coro_scheduler->total_time);
+}
+
+void jump_to_scheduler(struct scheduler *coro_scheduler, ucontext_t *main_ctx) {
+  printf("Scheduling started!\n");
+
+  conditional_handle_error(swapcontext(main_ctx, coro_scheduler->scheduler_ctx),
+                           "error while jumping to scheduler");
 }
 
 void yield(struct scheduler *coro_scheduler) {
+  // coroutine total time count
+  coro_scheduler->total_time[coro_scheduler->running_coroutine] +=
+      clock() -
+      coro_scheduler->cur_launch_time[coro_scheduler->running_coroutine];
+
   conditional_handle_error(
       swapcontext(
           &coro_scheduler->coroutines[coro_scheduler->running_coroutine],
           coro_scheduler->scheduler_ctx),
       "error while yielding");
+}
+
+void print_scheduler_metrics(struct scheduler *coro_scheduler) {
+  for (size_t i = 0; i < coro_scheduler->free_slot; ++i) {
+    double total_time =
+        ((double)coro_scheduler->total_time[i]) / CLOCKS_PER_SEC * 1000;
+    printf("Coroutine #%zu runtime: %.1f ms\n", i, total_time);
+  }
 }
