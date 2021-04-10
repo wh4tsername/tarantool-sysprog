@@ -30,19 +30,14 @@ static void *allocate_stack_mprot() {
 }
 
 void *allocate_stack(enum stack_type t) {
-  void* mem = NULL;
   switch (t) {
     case STACK_MMAP:
-      mem = allocate_stack_mmap();
+      return allocate_stack_mmap();
     case STACK_SIG:
-      mem = allocate_stack_sig();
+      return allocate_stack_sig();
     case STACK_MPROT:
-      mem = allocate_stack_mprot();
+      return allocate_stack_mprot();
   }
-
-  conditional_handle_error(mem == NULL, "stack allocation error");
-
-  return mem;
 }
 
 void schedule(struct scheduler *coro_scheduler) {
