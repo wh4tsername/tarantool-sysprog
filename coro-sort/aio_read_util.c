@@ -19,7 +19,7 @@ struct request {
 
 uint32_t get_filesize(int fd) {
   struct stat st;
-  fstat(fd, &st);
+  conditional_handle_error(fstat(fd, &st) == -1, "fstat error");
 
   return st.st_size;
 }
@@ -27,8 +27,16 @@ uint32_t get_filesize(int fd) {
 void aio_read_util(uint32_t num_files, char **filenames, char **buffers,
                    int32_t **arrays, int32_t *sizes) {
   struct request *req_list = calloc(num_files, sizeof(struct request));
+  conditional_handle_error(req_list == NULL,
+                           "calloc request list error");
+
   struct aiocb *aiocb_list = calloc(num_files, sizeof(struct aiocb));
+  conditional_handle_error(aiocb_list == NULL,
+                           "calloc aiocb list error");
+
   int *processed_mask = calloc(num_files, sizeof(int));
+  conditional_handle_error(processed_mask == NULL,
+                           "calloc processed mask error");
 
   for (uint32_t j = 0; j < num_files; ++j) {
     req_list[j].status = EINPROGRESS;
@@ -41,6 +49,9 @@ void aio_read_util(uint32_t num_files, char **filenames, char **buffers,
 
     uint32_t buf_size = get_filesize(req_list[j].aiocb_p->aio_fildes) + 1;
     req_list[j].aiocb_p->aio_buf = malloc(buf_size);
+    conditional_handle_error(req_list[j].aiocb_p->aio_buf == NULL,
+                             "malloc aio buffer error");
+
     req_list[j].aiocb_p->aio_nbytes = buf_size;
 
     req_list[j].aiocb_p->aio_reqprio = 0;

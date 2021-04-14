@@ -41,6 +41,7 @@ void sort(int32_t* array, uint32_t size) {
   yield(&global_coro_scheduler);
 
   int32_t* buf = calloc(size, sizeof(int32_t));
+  conditional_handle_error(buf == NULL, "sort buffer calloc error");
 
   for (uint32_t i = 1; i < size; i *= 2) {
     for (uint32_t j = 0; j < size - i; j += 2 * i) {
@@ -60,12 +61,15 @@ void prepare_sort(char* number_line, uint32_t size, int32_t** array,
   const uint32_t max_arr_size = (size + 1) / 2;
 
   char* buf = malloc(max_number_length);
+  conditional_handle_error(buf == NULL, "sort buffer calloc error");
+
   *array = calloc(max_arr_size, sizeof(int32_t));
+  conditional_handle_error(*array == NULL, "sort array calloc error");
 
   char* new_ptr = NULL;
   *count_numbers = 0;
   while (*number_line != '\0') {
-    int32_t num = strtol(number_line, &new_ptr, 10);
+    int32_t num = (int32_t)strtol(number_line, &new_ptr, 10);
 
     (*array)[*count_numbers] = num;
     ++*count_numbers;

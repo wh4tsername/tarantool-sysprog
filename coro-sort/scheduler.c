@@ -97,6 +97,8 @@ void reuse_scheduler(struct scheduler *coro_scheduler,
   char *scheduler_stack = allocate_stack(STACK_SIG);
 
   coro_scheduler->scheduler_ctx = malloc(sizeof(struct ucontext_t));
+  conditional_handle_error(coro_scheduler->scheduler_ctx == NULL,
+                           "scheduler context malloc error");
   conditional_handle_error(getcontext(coro_scheduler->scheduler_ctx) == -1,
                            "error while getting context");
 
@@ -106,7 +108,6 @@ void reuse_scheduler(struct scheduler *coro_scheduler,
 
   makecontext(coro_scheduler->scheduler_ctx, (void (*)(void))schedule, 1,
               coro_scheduler);
-
 }
 
 void make_scheduler(struct scheduler *coro_scheduler,
@@ -119,6 +120,8 @@ void make_scheduler(struct scheduler *coro_scheduler,
   char *scheduler_stack = allocate_stack(STACK_SIG);
 
   coro_scheduler->scheduler_ctx = malloc(sizeof(struct ucontext_t));
+  conditional_handle_error(coro_scheduler->scheduler_ctx == NULL,
+                           "scheduler context malloc error");
   conditional_handle_error(getcontext(coro_scheduler->scheduler_ctx) == -1,
                            "error while getting context");
 
@@ -131,10 +134,18 @@ void make_scheduler(struct scheduler *coro_scheduler,
 
   coro_scheduler->coroutines =
       malloc(max_coroutines * sizeof(struct ucontext_t));
+  conditional_handle_error(coro_scheduler->coroutines == NULL,
+                           "coroutines malloc error");
   coro_scheduler->statuses = malloc(max_coroutines * sizeof(enum coro_status));
+  conditional_handle_error(coro_scheduler->statuses == NULL,
+                           "statuses malloc error");
 
   coro_scheduler->cur_launch_time = calloc(max_coroutines, sizeof(clock_t));
+  conditional_handle_error(coro_scheduler->cur_launch_time == NULL,
+                           "time struct malloc error");
   coro_scheduler->total_time = calloc(max_coroutines, sizeof(clock_t));
+  conditional_handle_error(coro_scheduler->total_time == NULL,
+                           "time struct malloc error");
 }
 
 void destroy_scheduler(struct scheduler *coro_scheduler) {

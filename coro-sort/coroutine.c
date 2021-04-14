@@ -21,6 +21,8 @@ struct ucontext_t* spawn_coroutine(struct scheduler* coro_scheduler) {
   char* finish_stack = allocate_stack(STACK_SIG);
 
   struct ucontext_t* finish_ctx = malloc(sizeof(struct ucontext_t));
+  conditional_handle_error(finish_ctx == NULL, "context malloc error");
+
   getcontext(finish_ctx);
 
   finish_ctx->uc_stack.ss_sp = finish_stack;

@@ -5,7 +5,7 @@
 
 #include "defines.h"
 
-#define stack_size 1024 * 1024
+#define stack_size 64 * 1024 * 1024
 
 enum stack_type { STACK_MMAP, STACK_SIG, STACK_MPROT };
 

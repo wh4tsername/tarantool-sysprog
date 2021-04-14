@@ -47,8 +47,13 @@ int main(int argc, char** argv) {
   clock_t cur_time = clock();
 
   char** buffers = calloc(num_files, sizeof(char*));
+  conditional_handle_error(buffers == NULL, "buffers calloc error");
+
   int32_t** arrays = calloc(num_files, sizeof(int32_t*));
+  conditional_handle_error(arrays == NULL, "arrays calloc error");
+
   int32_t* sizes = calloc(num_files, sizeof(int32_t));
+  conditional_handle_error(sizes == NULL, "sizes calloc error");
 
   // creating scheduler
   make_scheduler(&global_coro_scheduler, &main_ctx, num_files + 2);
@@ -67,6 +72,8 @@ int main(int argc, char** argv) {
   }
 
   int32_t* sort_res = calloc(total_size, sizeof(int32_t));
+  conditional_handle_error(sort_res == NULL,
+                           "sort results calloc error");
 
   // reusing scheduler - updating trampoline and stack
   memset(&main_ctx, 0, sizeof(struct ucontext_t));
