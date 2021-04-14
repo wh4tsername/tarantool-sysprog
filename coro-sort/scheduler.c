@@ -8,6 +8,8 @@
 #include <time.h>
 #include <ucontext.h>
 
+size_t yield_counter = 0;
+
 static void *allocate_stack_sig() {
   void *stack = malloc(stack_size);
   stack_t ss;
@@ -149,6 +151,8 @@ void make_scheduler(struct scheduler *coro_scheduler,
 }
 
 void destroy_scheduler(struct scheduler *coro_scheduler) {
+  printf("Yields done: %zu\n", yield_counter);
+
   for (size_t i = 0; i < coro_scheduler->free_slot; ++i) {
     free(coro_scheduler->coroutines[i].uc_link->uc_stack.ss_sp);
     free(coro_scheduler->coroutines[i].uc_link);
@@ -173,6 +177,8 @@ void jump_to_scheduler(struct scheduler *coro_scheduler, ucontext_t *main_ctx) {
 }
 
 void yield(struct scheduler *coro_scheduler) {
+  ++yield_counter;
+
   // coroutine total time count
   coro_scheduler->total_time[coro_scheduler->running_coroutine] +=
       clock() -
