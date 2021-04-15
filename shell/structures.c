@@ -35,7 +35,7 @@ void clear_cmd(struct cmd* cmd) {
 
 void create_pipeline(struct pipeline* pipeline) {
   pipeline->commands = calloc(1, sizeof(struct vector));
-  conditional_handle_error(pipeline->commands, "calloc commands error");
+  conditional_handle_error(pipeline->commands == NULL, "calloc commands error");
 
   create_vector(pipeline->commands, sizeof(struct cmd*));
 
@@ -61,7 +61,7 @@ void clear_pipeline(struct pipeline* pipeline) {
 
 void create_query(struct query* query) {
   query->pipelines = calloc(1, sizeof(struct vector));
-  conditional_handle_error(query->pipelines, "calloc pipelines error");
+  conditional_handle_error(query->pipelines == NULL, "calloc pipelines error");
 
   create_vector(query->pipelines, sizeof(struct pipeline*));
 
