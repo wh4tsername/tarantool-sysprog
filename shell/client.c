@@ -12,16 +12,24 @@
 
 ssize_t get_line(struct buffer* buf) {
   struct vector vec;
-  create_vector(&vec, sizeof(char));
 
   bool in_string = false;
   char quote = ' ';
+  bool lazy_alloc = true;
   while (true) {
     // scan symbol
     int res = getchar();
+
     if (res == -1) {
       return res;
     }
+
+    if (lazy_alloc) {
+      create_vector(&vec, sizeof(char));
+
+      lazy_alloc = false;
+    }
+
     char symbol = (char)res;
 
     // handle quotes
@@ -82,13 +90,11 @@ bool read_cmd(struct buffer* buf) {
 //  printf("mini-shell$ ");
 
   ssize_t num_read_bytes = get_line(buf);
-  if (num_read_bytes == -1) {
+  if (num_read_bytes <= 0) {
     free_buffer(buf);
 
     return false;
   }
-
-  buf->cur_size = (size_t)num_read_bytes;
 
   return true;
 }
@@ -226,7 +232,7 @@ void handle_str(struct buffer* buf,
 void parse(struct buffer* buf, struct vector* vec) {
   // check for comment
   char* comment_ptr = strtok(buf->ptr, "#");
-  buf->cur_size = comment_ptr == buf->ptr + 1 ? 0 : strlen(comment_ptr);
+  buf->cur_size = comment_ptr == buf->ptr + 1 || comment_ptr == NULL ? 0 : strlen(comment_ptr);
 
   // tokenizing
   for (size_t i = 0; i < buf->cur_size;) {
@@ -353,6 +359,7 @@ void run_shell() {
     create_vector(&vec, sizeof(char*));
 
     parse(&buf, &vec);
+//    free_buffer(&buf);
 
     // form query
     struct query query;
@@ -367,13 +374,11 @@ void run_shell() {
 
     // reinit buffer
     free_buffer(&buf);
-    init_buffer(&buf);
+//    init_buffer(&buf);
 
     for (size_t i = 0; i < vec.cur_size; ++i) {
       free(get_at(&vec, char*, i));
     }
     destroy_vector(&vec);
   }
-
-  free_buffer(&buf);
 }
