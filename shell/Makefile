@@ -5,7 +5,8 @@ CFLAGS	+= -Wundef -Wpointer-arith -Wcast-align -Wshadow
 CFLAGS	+= -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return
 CFLAGS	+= -Wswitch-enum -Wunreachable-code -Winit-self
 CFLAGS	+= -Wno-unused-parameter -pedantic -O3
-LDFLAGS	=
+CFLAGS	+= -fsanitize=address -fsanitize=undefined
+LDFLAGS	= -fsanitize=address -fsanitize=undefined
 
 BASE_SOURCES    = main.c
 SOURCES		= $(BASE_SOURCES) client.c buffer.c structures.c vector.c handlers.c
